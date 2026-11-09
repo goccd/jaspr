@@ -9,6 +9,17 @@ import 'package:stream_channel/stream_channel.dart';
 
 import '../jaspr_serverpod.dart';
 
+/// shelf 의 `protocolVersion` 은 "1.1" 같은 문자열이다.
+///
+/// relic 2.0.0-rc.3 부터 `Request.protocolVersion`(String) 이 `Request.protocol`
+/// (`HttpProtocol` enum)로 바뀌었다. enum 타입을 import 하지 않도록 `name` 으로 분기한다.
+String _shelfProtocolVersion(Request request) => switch (request.protocol.name) {
+  'http10' => '1.0',
+  'http2' => '2',
+  'http3' => '3',
+  _ => '1.1',
+};
+
 /// A [JasprRoute] is the most convenient way to render Jaspr components in your server.
 /// Override the [build] method and return a root [Component].
 ///
@@ -42,8 +53,9 @@ abstract class JasprRoute extends Route {
     final shelf.Request shelfRequest = shelf.Request(
       request.method.value,
       request.url,
-      protocolVersion: request.protocolVersion,
-      headers: request.headers,
+      protocolVersion: _shelfProtocolVersion(request),
+      // relic 2.0.0-rc.3 부터 Headers 는 Map 이 아니다 — shelf 는 Map 을 받는다.
+      headers: request.headers.toMap(),
       handlerPath: request.matchedPath.path,
       body: request.body.read(),
       encoding: request.encoding,
